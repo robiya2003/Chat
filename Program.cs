@@ -5,6 +5,7 @@
         static void Main(string[] args)
         {
             CHAT();
+            //Console.WriteLine(PosgreSqlWithCsharp.HashPassword("dfrt43i0"));
         }
         public static void SignUp()
         {

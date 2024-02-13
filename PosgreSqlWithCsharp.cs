@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -18,7 +19,7 @@ namespace Chat
 
             #region Registratsiya qismi
             string query = $"insert into users(fullname,username,password1) values" +
-                $"('{fullname}','{username}','{password}')";
+                $"('{fullname}','{username}','{HashPassword(password)}')";
             NpgsqlConnection npgsqlConnection = new NpgsqlConnection(CONNECTINGSTRING);
             npgsqlConnection.Open();
             NpgsqlCommand npgsqlCommand = new NpgsqlCommand(query, npgsqlConnection);
@@ -29,10 +30,11 @@ namespace Chat
             }
             return false;
         }
+        //
         public static bool Checking(string username,string password)
         {
             #region
-            string query = $"select * from users where username='{username}' and password1='{password}'";
+            string query = $"select * from users where username='{username}' and password1='{HashPassword(password)}'";
             NpgsqlConnection npgsqlConnection = new NpgsqlConnection(CONNECTINGSTRING);
             npgsqlConnection.Open();
             NpgsqlCommand npgsqlCommand = new NpgsqlCommand(query, npgsqlConnection);
@@ -55,7 +57,7 @@ namespace Chat
         public static List<object[]> GetAllUsers(string username, string password)
         {
               #region
-                string query = $"select user_id,username from users where username<>'{username}' and password1<>'{password}'";
+                string query = $"select user_id,username from users where username<>'{username}' and password1<>'{HashPassword(password)}'";
                 NpgsqlConnection npgsqlConnection = new NpgsqlConnection(CONNECTINGSTRING);
                 npgsqlConnection.Open();
                 NpgsqlCommand npgsqlCommand = new NpgsqlCommand(query, npgsqlConnection);
@@ -75,10 +77,11 @@ namespace Chat
             
             
         }
+        //
         public static void InserMessage(string username, string password,int id,string message)
         {
             #region Registratsiya qismi
-            string query = $"insert into allchats(sender_id,receiver_id,message1) values\r\n((select user_id from users where username='{username}' and password1='{password}'),{id},'{message}')\r\n";
+            string query = $"insert into allchats(sender_id,receiver_id,message1) values\r\n((select user_id from users where username='{username}' and password1='{HashPassword(password)}'),{id},'{message}')\r\n";
             NpgsqlConnection npgsqlConnection = new NpgsqlConnection(CONNECTINGSTRING);
             npgsqlConnection.Open();
             NpgsqlCommand npgsqlCommand = new NpgsqlCommand(query, npgsqlConnection);
@@ -113,6 +116,12 @@ namespace Chat
 
 
             #endregion
+        }
+        public static string HashPassword(string password)
+        {
+            var PasswordBytes= Encoding.UTF8.GetBytes(password);
+            var PasswordHash=SHA512.HashData(PasswordBytes);
+            return Convert.ToHexString(PasswordHash);
         }
 
     }
