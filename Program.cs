@@ -5,7 +5,7 @@
         static void Main(string[] args)
         {
             CHAT();
-            //Console.WriteLine(PosgreSqlWithCsharp.HashPassword("dfrt43i0"));
+            
         }
         public static void SignUp()
         {
@@ -87,8 +87,8 @@
         }
         public static void chatsss(string username, string password)
         {
-            Console.Clear();
-            Console.WriteLine("<- orqaga     Message->");
+            //Console.Clear();
+            Console.WriteLine("\n<- orqaga                                             Message ->\n");
             Console.WriteLine("Messges-----------------------------------");
             PosgreSqlWithCsharp.Messagess(username, password);
             Console.WriteLine("ALL USERS----------------------------------");

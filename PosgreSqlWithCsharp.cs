@@ -14,12 +14,11 @@ namespace Chat
 
         public static bool Regisratsiya(string fullname, string username, string password)
         {
-            if (Checking(username, password) && password.Length == 8)
-            { 
+                #region Registratsiya qismi
+                byte[]? salt = RandomNumberGenerator.GetBytes(64);
 
-            #region Registratsiya qismi
-            string query = $"insert into users(fullname,username,password1) values" +
-                $"('{fullname}','{username}','{HashPassword(password)}')";
+            string query = $"insert into users(fullname,username,password1,salt) values" +
+                $"('{fullname}','{username}','{HashPasswordwithSalt(password, Convert.ToHexString(salt))}','{Convert.ToHexString(salt)}')";
             NpgsqlConnection npgsqlConnection = new NpgsqlConnection(CONNECTINGSTRING);
             npgsqlConnection.Open();
             NpgsqlCommand npgsqlCommand = new NpgsqlCommand(query, npgsqlConnection);
@@ -27,14 +26,12 @@ namespace Chat
             npgsqlConnection.Close();
             #endregion
             return true;
-            }
-            return false;
         }
-        //
+        
         public static bool Checking(string username,string password)
         {
             #region
-            string query = $"select * from users where username='{username}' and password1='{HashPassword(password)}'";
+            string query = $"select * from users where username='{username}' and password1='{HashPasswordwithSalt(password,ReturnSalt(username))}'";
             NpgsqlConnection npgsqlConnection = new NpgsqlConnection(CONNECTINGSTRING);
             npgsqlConnection.Open();
             NpgsqlCommand npgsqlCommand = new NpgsqlCommand(query, npgsqlConnection);
@@ -57,7 +54,7 @@ namespace Chat
         public static List<object[]> GetAllUsers(string username, string password)
         {
               #region
-                string query = $"select user_id,username from users where username<>'{username}' and password1<>'{HashPassword(password)}'";
+                string query = $"select user_id,username from users where username<>'{username}' and password1<>'{HashPasswordwithSalt(password, ReturnSalt(username))}'";
                 NpgsqlConnection npgsqlConnection = new NpgsqlConnection(CONNECTINGSTRING);
                 npgsqlConnection.Open();
                 NpgsqlCommand npgsqlCommand = new NpgsqlCommand(query, npgsqlConnection);
@@ -81,7 +78,7 @@ namespace Chat
         public static void InserMessage(string username, string password,int id,string message)
         {
             #region Registratsiya qismi
-            string query = $"insert into allchats(sender_id,receiver_id,message1) values\r\n((select user_id from users where username='{username}' and password1='{HashPassword(password)}'),{id},'{message}')\r\n";
+            string query = $"insert into allchats(sender_id,receiver_id,message1) values\r\n((select user_id from users where username='{username}' and password1='{HashPasswordwithSalt(password, ReturnSalt(username))}'),{id},'{message}')\r\n";
             NpgsqlConnection npgsqlConnection = new NpgsqlConnection(CONNECTINGSTRING);
             npgsqlConnection.Open();
             NpgsqlCommand npgsqlCommand = new NpgsqlCommand(query, npgsqlConnection);
@@ -92,7 +89,7 @@ namespace Chat
         public static void Messagess(string username, string password)
         {
             #region
-            string query = $"select user_id,username,message1 from allchats\r\ninner join users on user_id=sender_id\r\nwhere receiver_id=(select user_id from users where username='{username}' and password1='{password}')";
+            string query = $"select user_id,username,message1 from allchats\r\ninner join users on user_id=sender_id\r\nwhere receiver_id=(select user_id from users where username='{username}' and password1='{HashPasswordwithSalt(password, ReturnSalt(username))}')";
             NpgsqlConnection npgsqlConnection = new NpgsqlConnection(CONNECTINGSTRING);
             npgsqlConnection.Open();
             NpgsqlCommand npgsqlCommand = new NpgsqlCommand(query, npgsqlConnection);
@@ -105,11 +102,17 @@ namespace Chat
                 ResultList.Add(objects);
             }
             npgsqlConnection.Close();
+            int n = 0;
             foreach (object[] column in ResultList)
             {
                 foreach (object row in column)
                 {
-                    Console.Write(row + " -> ");
+                    n++;
+                    Console.Write(" "+ row+" ");
+                    if (n == 2)
+                    {
+                        Console.Write(" ->");
+                    }
                 }
                 Console.WriteLine("");
             }
@@ -117,12 +120,44 @@ namespace Chat
 
             #endregion
         }
-        public static string HashPassword(string password)
+        public static string HashPasswordwithSalt(string password, string salt_)
         {
-            var PasswordBytes= Encoding.UTF8.GetBytes(password);
-            var PasswordHash=SHA512.HashData(PasswordBytes);
-            return Convert.ToHexString(PasswordHash);
-        }
+            #region
+            int iterations = 350_000;
+            int keySize = 64;
+            HashAlgorithmName hashAlgorithm = HashAlgorithmName.SHA512;
+            byte[] salt=Encoding.UTF8.GetBytes(salt_);
 
+            byte[] hash = Rfc2898DeriveBytes.Pbkdf2(
+                password,
+                salt,
+                iterations,
+                hashAlgorithm,
+                outputLength: keySize);
+            //Console.WriteLine(Convert.ToHexString(salt));
+            //Console.WriteLine(Convert.ToHexString(hash));
+
+            return Convert.ToHexString(hash);
+            #endregion
+        }
+        public static string ReturnSalt(string username)
+        {
+            #region
+            string query = $"select salt from users where username='{username}'";
+            NpgsqlConnection npgsqlConnection = new NpgsqlConnection(CONNECTINGSTRING);
+            npgsqlConnection.Open();
+            NpgsqlCommand npgsqlCommand = new NpgsqlCommand(query, npgsqlConnection);
+            NpgsqlDataReader? reader = npgsqlCommand.ExecuteReader();
+            List<object[]> ResultList = new List<object[]>();
+            while (reader.Read())
+            {
+                object[] objects = new object[reader.FieldCount];
+                reader.GetValues(objects);
+                ResultList.Add(objects);
+            }
+            npgsqlConnection.Close();
+            return ResultList[0][0].ToString();
+            #endregion
+        }
     }
 }
