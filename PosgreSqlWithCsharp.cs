@@ -105,6 +105,7 @@ namespace Chat
             int n = 0;
             foreach (object[] column in ResultList)
             {
+                n = 0;
                 foreach (object row in column)
                 {
                     n++;
